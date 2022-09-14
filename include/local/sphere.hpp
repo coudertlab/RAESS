@@ -1,4 +1,5 @@
 #include <random>
+#include <vector>
 #include <cmath>
 #include <chrono>
 #include <gemmi/math.hpp>
@@ -48,27 +49,6 @@ vector<gemmi::Vec3> generateSphereAngleRandom(int num_steps) {
   }
   return v;
 }
-
-
-//// Projection of a cylindre on a sphere (cos_phi being the height) Archimedes Theorem
-//vector<gemmi::Vec3> generateSphereAngleRandom(int num_steps) {
-//  vector<gemmi::Vec3> v;
-//  unsigned seed = chrono::system_clock::now().time_since_epoch().count();
-//  default_random_engine generator (seed);
-//  uniform_real_distribution<double> uniform01(0.0, 1.0);
-//  double cos_theta; double sin_theta;
-//  double cos_phi; double sin_phi;
-//  gemmi::Vec3 coord;
-//  for (int i = 0; i < num_steps; i++) {
-//    cos_theta = cos(2 * M_PI * uniform01(generator));
-//    cos_phi = 1 - 2 * uniform01(generator);
-//    sin_theta = sqrt(1 - cos_theta * cos_theta);
-//    sin_phi = sqrt(1 - cos_phi * cos_phi);
-//    coord = gemmi::Vec3( sin_phi * cos_theta, sin_phi * sin_theta, cos_phi );
-//    v.push_back(coord);
-//  }
-//  return v;
-//}
 
 vector<gemmi::Vec3> generateSphereCubeRandom(int num_steps) {
   vector<gemmi::Vec3> v;

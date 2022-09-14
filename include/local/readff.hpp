@@ -1,6 +1,7 @@
 #include <vector>
 #include <map>
 #include <string>
+#include <iostream>      // printing
 #include <fstream>      // file reading
 
 using namespace std;
