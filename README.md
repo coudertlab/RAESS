@@ -1,5 +1,33 @@
 # RAESS
-Rapid Adsorption Enthalpy Surface Sampling
+RAESS (Rapid Adsorption Enthalpy Surface Sampling) is a sampling tool for rapid 
+
+## Installation
+
+Check if you have `c++11` compiler installed (may work with other compiler but has been tested and mainly used with this compiler).
+
+Compilation that follows the rules set in the `Makefile`:
+```make all```
+
+## Example Usage
+
+If you want to run a surface sampling simulation on the structure KAXQIL (CSD code) from CoRE MOF 2019 all-solvent removed with the Dreiding+uff forcefield at 298K with a 16A cutoff for the xenon. 
+```./raess structure/KAXQIL_clean.cif forcefield/Dreiding_uff.def 298 16 2000 Xe 0.85 1.6```
+
+The results are printed in a comma separated format: structure, adsorption enthalpy (kJ/mol), Henry coefficient (mol/kg/Pa), Accessible Surface Area (m2/cm3), Time (s)
+
+This binary is supposed to be used in a high-throughput manner to add rows to a csv file.
+
+## Paper
+
+This work is presented in the foloowing article:
+(on going work)
+
+## Acknowledgement
+
+This code has been developped during a PhD thesis co-financed by the CEA and Orano under the supervision of François-Xavier Coudert: https://github.com/fxcoudert
+
+This code includes the library developped in Gemmi: 
+https://github.com/project-gemmi/gemmi.git
 
 ## License
 
