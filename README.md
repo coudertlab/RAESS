@@ -14,11 +14,11 @@ make all
 
 If you want to run a surface sampling simulation on the structure KAXQIL (CSD code) from CoRE MOF 2019 all-solvent removed with the Dreiding+uff forcefield at 298K with a 16A cutoff for the xenon. 
 ```
-./raess structure/KAXQIL_clean.cif forcefield/UFF.def 298 12 2000 Xe 0.85 1.6
+./raess structure/KAXQIL_clean_14.cif forcefield/UFF.def 298 12 2000 Xe 0.85 1.6
 ```
 You should get an output that has values close to this:
 ```
-KAXQIL_clean,-44.442,0.0283954,67.093,0.343014
+KAXQIL_clean_14,-44.4382,0.0283933,66.4711,0.0793238
 ```
 
 The results are printed in a comma separated format: structure, adsorption enthalpy (kJ/mol), Henry coefficient (mol/kg/Pa), Accessible Surface Area (m2/cm3), Time (s)
