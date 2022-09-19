@@ -198,15 +198,15 @@ int main(int argc, char* argv[]) {
           free = false;
           break;
         }
-	else if (distance_sq < cutoff_sq) {
+	      else if (distance_sq < cutoff_sq) {
           epsilon = pos_epsilon_sigma[3];
           sigma_6 = pos_epsilon_sigma[5];
           inv_distance_6 = 1.0 / ( distance_sq * distance_sq * distance_sq );
           inv_distance_12 = inv_distance_6 * inv_distance_6;
           energy_temp = epsilon * sigma_6 * ( sigma_6 * (inv_distance_12 - inv_cutoff_12) - inv_distance_6 + inv_cutoff_6 );
           energy_lj += energy_temp;
+          if (energy_temp > 0) { free = false; }
         }
-        if (energy_temp > 0) { free = false; }
       }
       energy_lj *= 4*R;
       if ( free ) {count_acc++; }

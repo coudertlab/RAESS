@@ -18,7 +18,7 @@ If you want to run a surface sampling simulation on the structure KAXQIL (CSD co
 ```
 You should get an output that has values close to this:
 ```
-KAXQIL_clean_14,-44.4382,0.0283933,66.4711,0.0793238
+KAXQIL_clean_14,-44.4186,0.0283404,70.9159,0.0707517
 ```
 
 The results are printed in a comma separated format: structure, adsorption enthalpy (kJ/mol), Henry coefficient (mol/kg/Pa), Accessible Surface Area (m2/cm3), Time (s)
