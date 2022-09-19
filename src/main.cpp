@@ -1,6 +1,6 @@
 #include <local/forcefield.hpp> // define forcefield parameters
 #include <local/sphere.hpp>     // Define sampling methodology
-#include <local/supracell.hpp> // define supracell size
+#include <local/boxsetting.hpp> // set rectangular shaped box using periodic boundary conditions
 
 #include <gemmi/cif.hpp>        // file -> cif::Document
 #include <gemmi/smcif.hpp>      // cif::Document -> SmallStructure
@@ -91,13 +91,18 @@ int main(int argc, char* argv[]) {
   structure.cell.set_cell_images_from_spacegroup(sg);
   vector<gemmi::SmallStructure::Site> unique_sites = structure.sites;
   vector<gemmi::SmallStructure::Site> all_sites = structure.get_all_unit_cell_sites();
-
-  int n_max=0;int l_max=0; int m_max=0;
-  set_supracell(&n_max, &m_max, &l_max, structure, cutoff, sigma_guest);
+  // Cell vector
+  double a_x = structure.cell.orth.mat[0][0]; double b_x = structure.cell.orth.mat[0][1]; double c_x = structure.cell.orth.mat[0][2];
+  double b_y = structure.cell.orth.mat[1][1]; double c_y = structure.cell.orth.mat[1][2];
+  double c_z = structure.cell.orth.mat[2][2];
+  // Minimal rectangular box that could interact with atoms within the smaller equivalent rectangluar box
+  int n_max = int(abs((cutoff + sigma) / a_x)) + 1; 
+  int m_max = int(abs((cutoff + sigma) / b_y)) + 1; 
+  int l_max = int(abs((cutoff + sigma) / c_z)) + 1; 
 
   // Creates a list of sites within the cutoff
   vector<array<double,6>> supracell_sites;
-  gemmi::Fractional coord_temp;
+  gemmi::Fractional coord;
   string element_host_str_temp = "X";
 
   unordered_map<string, int> sym_counts;
@@ -110,17 +115,18 @@ int main(int argc, char* argv[]) {
       sigma = 0.5 * ( epsilon_sigma.second+sigma_guest );
     }
     element_host_str_temp = element_host_str;
-    gemmi::Fractional coord = site.fract;
     ++sym_counts[site.label];
+    // neighbor list within rectangular box
+    move_rect_box(site.fract,a_x,b_x,c_x,b_y,c_y);
     for (int n = -n_max; (n<n_max+1); ++n){
       for (int m = -m_max; (m<m_max+1); ++m) {
         for (int l = -l_max; (l<l_max+1); ++l) {
           // calculate a distance from centre box
           array<double,6> pos_epsilon_sigma;
-          coord_temp.x = coord.x + n;
-          coord_temp.y = coord.y + m;
-          coord_temp.z = coord.z + l;
-          gemmi::Position pos = gemmi::Position(structure.cell.orthogonalize(coord_temp));
+          coord.x = site.fract.x + n;
+          coord.y = site.fract.y + m;
+          coord.z = site.fract.z + l;
+          gemmi::Position pos = gemmi::Position(structure.cell.orthogonalize(coord));
           pos_epsilon_sigma[0] = pos.x;
           pos_epsilon_sigma[1] = pos.y;
           pos_epsilon_sigma[2] = pos.z;
@@ -135,9 +141,6 @@ int main(int argc, char* argv[]) {
 
   if (sym_counts.size() != unique_sites.size()) {throw invalid_argument( "Can't generate symmetry mapping for unique sites, make sure each atoms have a unique label" );}
 
-  // vector<gemmi::Vec3> sphere_distr_vector = generateSphereNormalRandom(num_steps);
-  // vector<gemmi::Vec3> sphere_distr_vector = generateSphereAngleRandom(num_steps);
-  // vector<gemmi::Vec3> sphere_distr_vector = generateSphereCubeRandom(num_steps);
   vector<gemmi::Vec3> sphere_distr_vector = generateSphereSpirals(num_steps);
 
   double mass = 0;
@@ -161,12 +164,21 @@ int main(int argc, char* argv[]) {
 
     gemmi::Element el(element_host_str.c_str());
     mass += sym_count * el.weight();
+    move_rect_box(site.fract,a_x,b_x,c_x,b_y,c_y);
     gemmi::Vec3 Vsite = gemmi::Vec3(structure.cell.orthogonalize(site.fract));
     // Cell list pruning to have only the sites that are within (cutoff + radius) of the unique site
     neighbor_sites = {};
     for (array<double,6> pos_epsilon_sigma : supracell_sites) {
-      dist = gemmi::Vec3(pos_epsilon_sigma[0], pos_epsilon_sigma[1], pos_epsilon_sigma[2]).dist(Vsite);
-      if (dist < cutoff + radius) {neighbor_sites.push_back(pos_epsilon_sigma);}
+      double cutoff_2 = cutoff + radius;
+      double delta_x = abs(Vsite.x-pos_epsilon_sigma[0]);
+      if (delta_x > cutoff_2) {continue;}
+      double delta_y = abs(Vsite.y-pos_epsilon_sigma[1]);
+      if (delta_y > cutoff_2) {continue;}
+      double delta_z = abs(Vsite.z-pos_epsilon_sigma[2]);
+      if (delta_z > cutoff_2) {continue;}
+      distance_sq = delta_x*delta_x+delta_y*delta_y+delta_z*delta_z;
+      if (distance_sq > cutoff_2*cutoff_2) {continue;}
+      neighbor_sites.push_back(pos_epsilon_sigma);
     }
     // Loop around the sphere surface of the unique site
     int count_acc = 0; // count accessible points
@@ -181,23 +193,23 @@ int main(int argc, char* argv[]) {
         pos_neigh = gemmi::Vec3(pos_epsilon_sigma[0], pos_epsilon_sigma[1], pos_epsilon_sigma[2]);
         distance_sq = (V+Vsite).dist_sq(pos_neigh);
         sigma_sq = pos_epsilon_sigma[4];
-        if (distance_sq < sigma_sq*access_coeff_sq) {
+        if (distance_sq <= sigma_sq*access_coeff_sq) {
           energy_lj = 1e10;
           free = false;
           break;
         }
-        else if (distance_sq < cutoff_sq) {
+	else if (distance_sq < cutoff_sq) {
           epsilon = pos_epsilon_sigma[3];
           sigma_6 = pos_epsilon_sigma[5];
           inv_distance_6 = 1.0 / ( distance_sq * distance_sq * distance_sq );
           inv_distance_12 = inv_distance_6 * inv_distance_6;
           energy_temp = epsilon * sigma_6 * ( sigma_6 * (inv_distance_12 - inv_cutoff_12) - inv_distance_6 + inv_cutoff_6 );
+          energy_lj += energy_temp;
         }
         if (energy_temp > 0) { free = false; }
-        energy_lj += energy_temp;
       }
       energy_lj *= 4*R;
-      if ( free ) {count_acc++;}
+      if ( free ) {count_acc++; }
       exp_energy = exp(-energy_lj/(R*temperature)); 
       sum_exp_energy += exp_energy;
       boltzmann_energy_lj += exp_energy*energy_lj;
