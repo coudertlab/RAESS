@@ -118,8 +118,8 @@ int main(int argc, char* argv[]) {
     ++sym_counts[site.label];
     // neighbor list within rectangular box
     move_rect_box(site.fract,a_x,b_x,c_x,b_y,c_y);
-    for (int n = -n_max; (n<n_max+1); ++n){
-      for (int m = -m_max; (m<m_max+1); ++m) {
+    for (int n = -n_max; (n<n_max+1); ++n)
+      for (int m = -m_max; (m<m_max+1); ++m)
         for (int l = -l_max; (l<l_max+1); ++l) {
           // calculate a distance from centre box
           array<double,6> pos_epsilon_sigma;
@@ -135,8 +135,6 @@ int main(int argc, char* argv[]) {
           pos_epsilon_sigma[5] = pos_epsilon_sigma[4] * pos_epsilon_sigma[4] * pos_epsilon_sigma[4];
           supracell_sites.push_back(pos_epsilon_sigma);
         }
-      }
-    }
   }
 
   if (sym_counts.size() != unique_sites.size()) {throw invalid_argument( "Can't generate symmetry mapping for unique sites, make sure each atoms have a unique label" );}
