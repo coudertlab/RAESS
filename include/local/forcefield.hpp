@@ -176,14 +176,14 @@ struct Parameters {
       if (endch == '_') {
         element_str.pop_back();
         gemmi::Element el(element_str);
-        if (el.name() != "X") {
+        if (strcmp(el.name(),"X")!=0) {
           host_epsilons[el.ordinal()] = stod(split_row_temp[2]);
           host_sigmas[el.ordinal()] = stod(split_row_temp[3]);
         }
       }
       else {
         gemmi::Element el(element_str);
-        if (el.name() != "X") {
+        if (strcmp(el.name(),"X")!=0) {
           guest_epsilons[guest_noble_index[el.ordinal()]] = stod(split_row_temp[2]);
           guest_sigmas[guest_noble_index[el.ordinal()]] = stod(split_row_temp[3]);
         }
