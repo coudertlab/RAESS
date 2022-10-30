@@ -41,7 +41,9 @@ vector<gemmi::Vec3> generateSphereAngleRandom(int num_steps) {
   double cos_phi; double sin_phi;
   gemmi::Vec3 coord;
   for (int i = 0; i < num_steps; i++) {
-    sincos(2 * M_PI * uniform01(generator), &cos_theta, &sin_theta);
+    double theta = 2 * M_PI * uniform01(generator);
+    sin_theta = sin(theta);
+    cos_theta = cos(theta);
     cos_phi = 1 - 2 * uniform01(generator);
     sin_phi = sqrt(1 - cos_phi * cos_phi);
     coord = gemmi::Vec3( sin_phi * cos_theta, sin_phi * sin_theta, cos_phi );
@@ -86,7 +88,8 @@ vector<gemmi::Vec3> generateSphereSpirals(int num_steps) {
   double sin_phi;
   for (int i = 0; i < num_steps; i++) {
     theta += d_theta;
-    sincos(theta, &cos_theta, &sin_theta);
+    sin_theta = sin(theta); 
+    cos_theta = cos(theta);
     cos_phi -= d_cos_phi;
     sin_phi = sqrt(1 - cos_phi * cos_phi);
     coord = gemmi::Vec3( sin_phi * cos_theta, sin_phi * sin_theta, cos_phi );

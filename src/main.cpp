@@ -96,9 +96,9 @@ int main(int argc, char* argv[]) {
   double b_y = structure.cell.orth.mat[1][1]; double c_y = structure.cell.orth.mat[1][2];
   double c_z = structure.cell.orth.mat[2][2];
   // Minimal rectangular box that could interact with atoms within the smaller equivalent rectangluar box
-  int n_max = int(abs((cutoff + sigma) / a_x)) + 1; 
-  int m_max = int(abs((cutoff + sigma) / b_y)) + 1; 
-  int l_max = int(abs((cutoff + sigma) / c_z)) + 1; 
+  int n_max = int(abs((cutoff + sigma_guest) / a_x)) + 1; 
+  int m_max = int(abs((cutoff + sigma_guest) / b_y)) + 1; 
+  int l_max = int(abs((cutoff + sigma_guest) / c_z)) + 1; 
 
   // Creates a list of sites within the cutoff
   vector<array<double,6>> supracell_sites;
