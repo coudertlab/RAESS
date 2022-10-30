@@ -5,6 +5,7 @@
 #include <utility>       // std::pair
 #include <gemmi/elem.hpp>      // Atomic Element manipulation
 #include <cmath>
+#include <cstring>
 
 // Gas mono-atomiques pour les adsorbats
 #ifndef LOCAL_FF_HPP_
