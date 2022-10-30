@@ -100,6 +100,10 @@ int main(int argc, char* argv[]) {
   int m_max = int(abs((cutoff + sigma_guest) / b_y)) + 1; 
   int l_max = int(abs((cutoff + sigma_guest) / c_z)) + 1; 
 
+  // center position used to reduce the neighbor list
+  gemmi::Position center_pos = gemmi::Position(a_x/2,b_y/2,c_z/2);
+  double large_cutoff = cutoff + center_pos.length() + sigma_guest;
+
   // Creates a list of sites within the cutoff
   vector<array<double,6>> supracell_sites;
   gemmi::Fractional coord;
@@ -127,6 +131,14 @@ int main(int argc, char* argv[]) {
           coord.y = site.fract.y + m;
           coord.z = site.fract.z + l;
           gemmi::Position pos = gemmi::Position(structure.cell.orthogonalize(coord));
+          double delta_x = abs(center_pos.x-pos.x);
+          if (delta_x > large_cutoff) {continue;}
+          double delta_y = abs(center_pos.y-pos.y);
+          if (delta_y > large_cutoff) {continue;}
+          double delta_z = abs(center_pos.z-pos.z);
+          if (delta_z > large_cutoff) {continue;}
+          distance_sq = delta_x*delta_x+delta_y*delta_y+delta_z*delta_z;
+          if (distance_sq > large_cutoff*large_cutoff) {continue;}
           pos_epsilon_sigma[0] = pos.x;
           pos_epsilon_sigma[1] = pos.y;
           pos_epsilon_sigma[2] = pos.z;
