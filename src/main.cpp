@@ -109,6 +109,7 @@ int main(int argc, char* argv[]) {
   gemmi::Fractional coord;
   string element_host_str_temp = "X";
 
+  double mass = 0;
   unordered_map<string, int> sym_counts;
   for (auto site: all_sites) {
     element_host_str = site.type_symbol;
@@ -119,6 +120,8 @@ int main(int argc, char* argv[]) {
       sigma = 0.5 * ( epsilon_sigma.second+sigma_guest );
     }
     element_host_str_temp = element_host_str;
+    gemmi::Element el(element_host_str.c_str());
+    mass += el.weight();
     ++sym_counts[site.label];
     // neighbor list within rectangular box
     move_rect_box(site.fract,a_x,b_x,c_x,b_y,c_y);
@@ -153,7 +156,6 @@ int main(int argc, char* argv[]) {
 
   vector<gemmi::Vec3> sphere_distr_vector = generateSphereSpirals(num_steps);
 
-  double mass = 0;
   double boltzmann_energy_lj = 0;
 
   double sum_exp_energy = 0;
@@ -171,9 +173,6 @@ int main(int argc, char* argv[]) {
     sigma_host = ff_params.get_sigma(element_host_str, false);
     radius = radius_factor * 0.5 * (sigma_guest+sigma_host);
     int sym_count = sym_counts[site.label];
-
-    gemmi::Element el(element_host_str.c_str());
-    mass += sym_count * el.weight();
     move_rect_box(site.fract,a_x,b_x,c_x,b_y,c_y);
     gemmi::Vec3 Vsite = gemmi::Vec3(structure.cell.orthogonalize(site.fract));
     // Cell list pruning to have only the sites that are within (cutoff + radius) of the unique site
