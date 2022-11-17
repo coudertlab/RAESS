@@ -96,9 +96,9 @@ int main(int argc, char* argv[]) {
   double b_y = structure.cell.orth.mat[1][1]; double c_y = structure.cell.orth.mat[1][2];
   double c_z = structure.cell.orth.mat[2][2];
   // Minimal rectangular box that could interact with atoms within the smaller equivalent rectangluar box
-  int n_max = int(abs((cutoff + sigma_guest) / a_x)) + 1; 
+  int l_max = int(abs((cutoff + sigma_guest) / c_z)) + 1;
   int m_max = int(abs((cutoff + sigma_guest) / b_y)) + 1; 
-  int l_max = int(abs((cutoff + sigma_guest) / c_z)) + 1; 
+  int n_max = int(abs((cutoff + sigma_guest) / a_x)) + 1; 
 
   // center position used to reduce the neighbor list
   gemmi::Position center_pos = gemmi::Position(a_x/2,b_y/2,c_z/2);
@@ -125,9 +125,17 @@ int main(int argc, char* argv[]) {
     ++sym_counts[site.label];
     // neighbor list within rectangular box
     move_rect_box(site.fract,a_x,b_x,c_x,b_y,c_y);
-    for (int n = -n_max; (n<n_max+1); ++n)
-      for (int m = -m_max; (m<m_max+1); ++m)
-        for (int l = -l_max; (l<l_max+1); ++l) {
+    for (int l = -l_max; (l<l_max+1); ++l){
+      int y_shift_lo=0; int y_shift_hi=0; // shift in y implied by the movement in c axis
+      double y_shift = (l*c_y/b_y);
+      if (y_shift>0){y_shift_lo = (int) (y_shift)+1; y_shift_hi = (int) (y_shift);} 
+      else if (y_shift<0){y_shift_lo = (int) (y_shift);y_shift_hi = (int) (y_shift)-1;}
+      for (int m = -m_max-y_shift_lo; (m<m_max-y_shift_hi+1); ++m){ // y contained between -12A and +12A shift correction
+        int x_shift_lo=0; int x_shift_hi=0; // shift in x implied by the movement in b and c axis
+        double x_shift = ((m*b_x + l*c_x)/a_x);
+        if (x_shift>0){x_shift_lo = (int) (x_shift)+1; x_shift_hi = (int) (x_shift);} 
+        else if (x_shift<0){x_shift_lo = (int) (x_shift);x_shift_hi = (int) (x_shift)-1;}
+        for (int n = -n_max-x_shift_lo; (n<n_max-x_shift_hi+1); ++n) {
           // calculate a distance from centre box
           array<double,6> pos_epsilon_sigma;
           coord.x = site.fract.x + n;
@@ -150,6 +158,8 @@ int main(int argc, char* argv[]) {
           pos_epsilon_sigma[5] = pos_epsilon_sigma[4] * pos_epsilon_sigma[4] * pos_epsilon_sigma[4];
           supracell_sites.push_back(pos_epsilon_sigma);
         }
+      }
+    }  
   }
 
   if (sym_counts.size() != unique_sites.size()) {throw invalid_argument( "Can't generate symmetry mapping for unique sites, make sure each atoms have a unique label" );}
