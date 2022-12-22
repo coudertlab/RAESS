@@ -18,9 +18,9 @@ double invsqrtQuake( double number ) {
 // Direction independent
 vector<gemmi::Vec3> generateSphereNormalRandom(int num_steps) {
   vector<gemmi::Vec3> v;
-  unsigned seed = chrono::system_clock::now().time_since_epoch().count();
-  default_random_engine generator (seed);
-  normal_distribution<double> normal_distrib (0.0,1.0);
+  unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+  std::default_random_engine generator (seed);
+  std::normal_distribution<double> normal_distrib (0.0,1.0);
   gemmi::Vec3 coord = gemmi::Vec3(0,0,0);
   double norm_sq = 0;
   for (int i = 0; i < num_steps; i++) {
@@ -34,9 +34,9 @@ vector<gemmi::Vec3> generateSphereNormalRandom(int num_steps) {
 // Projection of a cylindre on a sphere (cos_phi being the height) Archimedes Theorem
 vector<gemmi::Vec3> generateSphereAngleRandom(int num_steps) {
   vector<gemmi::Vec3> v;
-  unsigned seed = chrono::system_clock::now().time_since_epoch().count();
-  default_random_engine generator (seed);
-  uniform_real_distribution<double> uniform01(0.0, 1.0);
+  unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+  std::default_random_engine generator (seed);
+  std::uniform_real_distribution<double> uniform01(0.0, 1.0);
   double cos_theta; double sin_theta;
   double cos_phi; double sin_phi;
   gemmi::Vec3 coord;
@@ -54,9 +54,9 @@ vector<gemmi::Vec3> generateSphereAngleRandom(int num_steps) {
 
 vector<gemmi::Vec3> generateSphereCubeRandom(int num_steps) {
   vector<gemmi::Vec3> v;
-  unsigned seed = chrono::system_clock::now().time_since_epoch().count();
-  default_random_engine generator (seed);
-  uniform_real_distribution<double> uniform01(-1.0, 1.0);
+  unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+  std::default_random_engine generator (seed);
+  std::uniform_real_distribution<double> uniform01(-1.0, 1.0);
   double x; double y; double z;
   double norm_sq;
   gemmi::Vec3 coord;
@@ -75,9 +75,9 @@ vector<gemmi::Vec3> generateSphereCubeRandom(int num_steps) {
 
 // Golden number spirals
 vector<gemmi::Vec3> generateSphereSpirals(int num_steps) {
-  unsigned seed = chrono::system_clock::now().time_since_epoch().count();
-  default_random_engine generator (seed);
-  uniform_real_distribution<double> uniform01(0.0, 1.0);
+  unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+  std::default_random_engine generator (seed);
+  std::uniform_real_distribution<double> uniform01(0.0, 1.0);
   vector<gemmi::Vec3> v;
   gemmi::Vec3 coord;
   double d_theta = M_PI * (3-sqrt(5)) ;

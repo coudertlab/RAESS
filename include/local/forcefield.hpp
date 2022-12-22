@@ -11,22 +11,22 @@
 #ifndef LOCAL_FF_HPP_
 #define LOCAL_FF_HPP_
 
-using namespace std;
+using std::vector;
 
-namespace LennardJones {
+namespace ForceField {
 
-string ReplaceString(string subject, const string& search, const string& replace) {
+std::string ReplaceString(std::string subject, const std::string& search, const std::string& replace) {
   size_t pos = 0;
-  while ((pos = subject.find(search, pos)) != string::npos) {
+  while ((pos = subject.find(search, pos)) != std::string::npos) {
     subject.replace(pos, search.length(), replace);
     pos += replace.length();
   }
   return subject;
 }
 
-vector<string> SplitString(string s, string sep){
-  vector<string> v;
-	string temp = "";
+vector<std::string> SplitString(std::string s, std::string sep){
+  vector<std::string> v;
+	std::string temp = "";
 	for(int i=0;i<s.length();++i){
 		if(s.substr(i,sep.size())==sep){
       if(temp!=""){
@@ -46,7 +46,24 @@ vector<string> SplitString(string s, string sep){
 }
 
 struct Parameters {
-  double host_epsilons[120] = {
+  enum class MixingRule {
+    LorentzBerthelot,
+    Jorgensen
+  };
+  MixingRule mixing_rule = MixingRule::LorentzBerthelot;
+  enum class CutoffRule {
+    Shifted,
+    Truncated
+  };
+  CutoffRule cutoff_rule = CutoffRule::Shifted;
+  enum class InteractionType {
+    LennardJones,
+    Buckingham
+  };
+  InteractionType interaction_type = InteractionType::LennardJones;
+
+  static const int N_host = 120;
+  double host_epsilons[N_host] = {
     /*X*/ NAN,
     /*H*/  22.1417, /*He*/ 28.1803, /*Li*/ 12.5805, /*Be*/ 42.7737, 
     /*B*/  90.5795, /*C*/ 52.8381, /*N*/ 34.7222, /*O*/ 30.1932, 
@@ -81,7 +98,7 @@ struct Parameters {
     /*END*/ 0.0
   };
 
-  double host_sigmas[120] = {
+  double host_sigmas[N_host] = {
     /*X*/ NAN,
     /*H*/ 2.57113, /*He*/ 2.1043, /*Li*/ 2.18359, /*Be*/ 2.44552, 
     /*B*/ 3.63754, /*C*/ 3.43085, /*N*/ 3.26069, /*O*/ 3.11815, 
@@ -117,7 +134,7 @@ struct Parameters {
   };
 
   // The code only handles monoatomic gas adsorption
-  int guest_noble_index[120] = {
+  int guest_noble_index[N_host] = {
     /*X*/  0,
     /*H*/  0, /*He*/ 1,
     /*Li*/ 0, /*Be*/ 0, /*B*/  0, /*C*/  0, /*N*/  0,
@@ -147,32 +164,34 @@ struct Parameters {
     /*Cn*/ 0, /*Nh*/ 0, /*Fl*/ 0, /*Mc*/ 0, /*Lv*/ 0,
     /*Ts*/ 0, /*Og*/ 0, /*END*/ 0
   };
-  double guest_epsilons[7] = {
+
+  static const int N_guest = 7; //modify it accordingly
+  double guest_epsilons[N_guest] = {
     /*X*/ NAN,
     /*He*/ 10.9, /*Ne*/ NAN, /*Ar*/ 119.8, /*Kr*/ 166.4, 
     /*Xe*/ 221.0, /*Rn*/ NAN
   };
-  double guest_sigmas[7] = {
+  double guest_sigmas[N_guest] = {
     /*X*/ NAN,
     /*He*/ 2.64, /*Ne*/ NAN, /*Ar*/ 3.34, /*Kr*/ 3.636, 
     /*Xe*/ 4.1,/*Rn*/ NAN
   };
 
-  inline void read_lj_from_raspa(string forcefield_path) {
-    vector<string> L;
-    ifstream MyFile(forcefield_path);
+  inline void read_lj_from_raspa(std::string forcefield_path) {
+    vector<std::string> L;
+    std::ifstream MyFile(forcefield_path);
     if (!MyFile) {
-        cerr << "Couldn't open forcefield file.\n";
+        std::cerr << "Couldn't open forcefield file.\n";
     }
-    string myText;
+    std::string myText;
     while (getline (MyFile, myText)) {
       L.push_back(myText);
     }
-    vector<string> ForcefieldInfo(L.begin() + 7, L.end() - 2);
+    vector<std::string> ForcefieldInfo(L.begin() + 7, L.end() - 2);
 
-    for (string row : ForcefieldInfo) {
-      vector<string> split_row_temp = SplitString(ReplaceString(row,"\t"," "), " ");
-      string element_str = split_row_temp[0];
+    for (std::string row : ForcefieldInfo) {
+      vector<std::string> split_row_temp = SplitString(ReplaceString(row,"\t"," "), " ");
+      std::string element_str = split_row_temp[0];
       char endch = element_str.back();
       if (endch == '_') {
         element_str.pop_back();
@@ -195,7 +214,8 @@ struct Parameters {
   inline void print_default_lj_params() {
     typedef const char elname_t[3];
     static constexpr elname_t names[119] = {
-        "X",  "H",  "He", "Li", "Be", "B",  "C",  "N",  "O", "F", "Ne",
+        "X",  "H",  "He", 
+        "Li", "Be", "B",  "C",  "N",  "O", "F", "Ne",
         "Na", "Mg", "Al", "Si", "P",  "S",  "Cl", "Ar",
         "K",  "Ca", "Sc", "Ti", "V",  "Cr", "Mn", "Fe", "Co",
         "Ni", "Cu", "Zn", "Ga", "Ge", "As", "Se", "Br", "Kr",
@@ -210,27 +230,27 @@ struct Parameters {
         "Rf", "Db", "Sg", "Bh", "Hs", "Mt", "Ds", "Rg", "Cn",
         "Nh", "Fl", "Mc", "Lv", "Ts", "Og"
       };
-    cout << "EPSILON UFF" << endl;
+    std::cout << "EPSILON UFF" << std::endl;
     for (int i=0; i<119; i++) {
       gemmi::Element host_el(names[i]);
-      cout << "/*" << names[i] << "*/ " << host_epsilons[host_el.ordinal()] << ", ";
+      std::cout << "/*" << names[i] << "*/ " << host_epsilons[host_el.ordinal()] << ", ";
       if (i % 4 == 0) {
-        cout << endl;
+        std::cout << std::endl;
       }
     }
-    cout << endl;
-    cout << "SIGMA UFF" << endl;
+    std::cout << std::endl;
+    std::cout << "SIGMA UFF" << std::endl;
     for (int i=0; i<119; i++) {
       gemmi::Element host_el(names[i]);
-      cout << "/*" << names[i] << "*/ " << host_sigmas[host_el.ordinal()] << ", ";
+      std::cout << "/*" << names[i] << "*/ " << host_sigmas[host_el.ordinal()] << ", ";
       if (i % 4 == 0) {
-        cout << endl;
+        std::cout << std::endl;
       }
     }
-    cout << endl;
+    std::cout << std::endl;
   }
 
-  inline double get_epsilon(string element_str, bool is_guest) {
+  inline double get_epsilon(std::string element_str, bool is_guest) {
     gemmi::Element el(element_str.c_str());
     if (is_guest) {
       return guest_epsilons[guest_noble_index[el.ordinal()]];
@@ -240,7 +260,7 @@ struct Parameters {
     }
   }
 
-  inline double get_sigma(string element_str, bool is_guest) {
+  inline double get_sigma(std::string element_str, bool is_guest) {
     gemmi::Element el(element_str.c_str());
     if (is_guest) {
       return guest_sigmas[guest_noble_index[el.ordinal()]];
@@ -250,16 +270,61 @@ struct Parameters {
     }
   }
 
-  inline pair<double,double> get_epsilon_sigma(string element_str, bool is_guest) {
+  inline std::pair<double,double> get_epsilon_sigma(std::string element_str, bool is_guest) {
     gemmi::Element el(element_str.c_str());
+
     if (is_guest) {
-      return make_pair(guest_epsilons[guest_noble_index[el.ordinal()]],guest_sigmas[guest_noble_index[el.ordinal()]]);
+      return std::make_pair(guest_epsilons[guest_noble_index[el.ordinal()]],guest_sigmas[guest_noble_index[el.ordinal()]]);
     }
     else {
-      return make_pair(host_epsilons[el.ordinal()],host_sigmas[el.ordinal()]);
+      return std::make_pair(host_epsilons[el.ordinal()],host_sigmas[el.ordinal()]);
     }
   }
 
+  vector<vector<double>> mixing_LJ_LB(std::string element_host) {
+    vector<vector<double>> LJ_parameters_mixed;
+    gemmi::Element el_host(element_host.c_str());
+    double epsilon_guest = guest_epsilons[guest_noble_index[el_host.ordinal()]];
+    double sigma_guest = guest_sigmas[guest_noble_index[el_host.ordinal()]];
+    for (size_t i_host=0; i_host<N_host; i_host++){
+      double epsilon = sqrt(epsilon_guest*host_epsilons[i_host]);
+      double sigma = 0.5 * (sigma_guest+host_sigmas[i_host]);
+      double sigma_sq = sigma * sigma;
+      double sigma_6 = sigma_sq * sigma_sq * sigma_sq;
+      vector<double> epsilon_sigma_sq_6{epsilon, sigma, sigma_sq, sigma_6};
+      LJ_parameters_mixed.push_back(epsilon_sigma_sq_6);
+    }
+    return LJ_parameters_mixed;
+  }
+
+  vector<vector<double>> mixing_LJ_Jorgensen(std::string element_host) {
+    vector<vector<double>> LJ_parameters_mixed;
+    gemmi::Element el_host(element_host.c_str());
+    double epsilon_guest = guest_epsilons[guest_noble_index[el_host.ordinal()]];
+    double sigma_guest = guest_sigmas[guest_noble_index[el_host.ordinal()]];
+    for (size_t i_host=0; i_host<N_host; i_host++){
+      double epsilon = sqrt(epsilon_guest*host_epsilons[i_host]);
+      double sigma = sqrt(sigma_guest*host_sigmas[i_host]);
+      double sigma_sq = sigma * sigma;
+      double sigma_6 = sigma_sq * sigma_sq * sigma_sq;
+      vector<double> epsilon_sigma_sq_6{epsilon, sigma, sigma_sq, sigma_6};
+      LJ_parameters_mixed.push_back(epsilon_sigma_sq_6);
+    }
+    return LJ_parameters_mixed;
+  }
+
+  vector<vector<double>> generate_cross_parameters(std::string element_host) {
+    if (interaction_type == InteractionType::LennardJones) {
+      if (mixing_rule == MixingRule::LorentzBerthelot){
+        return mixing_LJ_LB(element_host);
+      }
+      else if (mixing_rule == MixingRule::Jorgensen){
+        return mixing_LJ_Jorgensen(element_host);
+      }
+      else {throw std::invalid_argument( "This type of mixing rule is not implemented yet" );}
+    }
+    else {throw std::invalid_argument( "The type of forcefield given is not implemented yet" );}
+  }
 };
 
 } // LennardJones

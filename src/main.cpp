@@ -12,13 +12,15 @@
 #define sqrt_2 1.414213562373095
 #define min_factor 1.122462048309373  // 2^(1/6)
 #define N_A 6.02214076e23    // part/mol
+#define MAX_EXP 1e3 // exp(-1000) = 1.34*10^434, for argument above we skip calculation
 
-using namespace std;
-namespace cif = gemmi::cif;
+double energy_lj_opt(double &epsilon, double sigma_6, double &inv_distance_6, double &inv_cutoff_6, double &inv_distance_12, double &inv_cutoff_12) {
+  return epsilon*sigma_6*( sigma_6 * (inv_distance_12 - inv_cutoff_12) - inv_distance_6 + inv_cutoff_6 );
+}
 
 int main(int argc, char* argv[]) {
   // Set up Input Variables
-  chrono::high_resolution_clock::time_point t_start = chrono::high_resolution_clock::now();
+  std::chrono::high_resolution_clock::time_point t_start = std::chrono::high_resolution_clock::now();
   if(argc == 2 && strcmp(argv[1], "--help")==0){
     printf("[USAGE] %s STRUCT FFIELD TEMPER CUTOFF NSTEPS ADSORB REJECT SRADIUS  \n", argv[0]);
     printf("Parameters need to be put in this exact order (a parsing tool will be added soon)\n");
@@ -36,7 +38,7 @@ int main(int argc, char* argv[]) {
   }
 
   auto structure_file = argv[1];
-  string forcefield_path = argv[2];
+  std::string forcefield_path = argv[2];
   double temperature = stod(argv[3]);
   double cutoff = stod(argv[4]);
   double cutoff_sq = cutoff*cutoff;
@@ -44,47 +46,39 @@ int main(int argc, char* argv[]) {
   double inv_cutoff_6 = 1.0/cutoff_6;
   double inv_cutoff_12 = inv_cutoff_6*inv_cutoff_6;
   int num_steps = stoi(argv[5]);
-  string element_guest_str = argv[6];
+  std::string element_guest_str = argv[6];
   double access_coeff_sq = 0;
   if (argv[7]) {access_coeff_sq = stod(argv[7])*stod(argv[7]);}
   double radius_factor = min_factor;
   if (argv[8]) {radius_factor = stod(argv[8]);}
+  double surface_limitation = 1.5;
+  if (argv[9]) {surface_limitation = stod(argv[9]);}
+  double MAX_ENERGY = surface_limitation*R*temperature;
 
   // Error catch
   if ( num_steps < 0 || temperature < 0 ) {throw invalid_argument( "Received negative value for the Number of Steps or the Temperature or the Accessibility Coefficient" );}
   if ( access_coeff_sq > 1 ) {throw invalid_argument( "Accessibility Coefficient above 1 (Read the purpose of this coeff)" );}
 
   // Read Forcefield Infos
-  LennardJones::Parameters ff_params;
+  ForceField::Parameters ff_params;
   if (forcefield_path != "DEFAULT") {
     ff_params.read_lj_from_raspa(forcefield_path);
   }
 
-  // Inialize key variables
-  string element_host_str;
-  double dist = 0;
-  double distance_sq = 0;
-  double epsilon = 0;
-  double sigma = 0;
-  double sigma_sq = 0;
-  double sigma_6 = 0;
-  double exp_energy = 0;
-
   // Adsorption infos from forcefield dictionary
-  pair<double,double> epsilon_sigma = ff_params.get_epsilon_sigma(element_guest_str, true);
-  double epsilon_guest = epsilon_sigma.first;
-  double sigma_guest = epsilon_sigma.second;
+  double sigma_guest = ff_params.get_sigma(element_guest_str, true);
+  vector<vector<double>> FF_parameters = ff_params.generate_cross_parameters(element_guest_str);
 
   // Read Structure cif files
-  cif::Document doc = cif::read_file(structure_file);
-  cif::Block block = doc.sole_block();
+  gemmi::cif::Document doc = gemmi::cif::read_file(structure_file);
+  gemmi::cif::Block block = doc.sole_block();
   gemmi::SmallStructure structure = gemmi::make_small_structure_from_block(block);
   // Setup spacegroup using number and reset the images properly (don't use hm notations)
   int spacegroup_number = 1;
   for (const char* tag : {"_space_group_IT_number",
                           "_symmetry_Int_Tables_number"})
-    if (const string* val = block.find_value(tag)) {
-      spacegroup_number = (int) cif::as_number(*val);
+    if (const std::string* val = block.find_value(tag)) {
+      spacegroup_number = (int) gemmi::cif::as_number(*val);
       break;
     }
   const gemmi::SpaceGroup* sg = gemmi::find_spacegroup_by_number(spacegroup_number);
@@ -105,23 +99,17 @@ int main(int argc, char* argv[]) {
   double large_cutoff = cutoff + center_pos.length() + sigma_guest;
 
   // Creates a list of sites within the cutoff
-  vector<array<double,6>> supracell_sites;
+  vector<array<double,4>> supracell_sites;
   gemmi::Fractional coord;
-  string element_host_str_temp = "X";
+  std::string element_host_str_temp = "X";
 
-  double mass = 0;
-  unordered_map<string, int> sym_counts;
+  double molar_mass = 0;
+  unordered_map<std::string, int> sym_counts;
   for (auto site: all_sites) {
-    element_host_str = site.type_symbol;
-    if (element_host_str != element_host_str_temp) {
-      epsilon_sigma = ff_params.get_epsilon_sigma(element_host_str, false);
-      // Lorentz-Berthelot
-      epsilon = sqrt( epsilon_sigma.first * epsilon_guest );
-      sigma = 0.5 * ( epsilon_sigma.second+sigma_guest );
-    }
-    element_host_str_temp = element_host_str;
-    gemmi::Element el(element_host_str.c_str());
-    mass += el.weight();
+    std::string element_host_str = site.type_symbol;
+    gemmi::Element el_host(element_host_str.c_str());
+    int atomic_number = el_host.ordinal();
+    molar_mass += el_host.weight();
     ++sym_counts[site.label];
     // neighbor list within rectangular box
     move_rect_box(site.fract,a_x,b_x,c_x,b_y,c_y);
@@ -137,7 +125,7 @@ int main(int argc, char* argv[]) {
         else if (x_shift<0){x_shift_lo = (int) (x_shift);x_shift_hi = (int) (x_shift)-1;}
         for (int n = -n_max-x_shift_lo; (n<n_max-x_shift_hi+1); ++n) {
           // calculate a distance from centre box
-          array<double,6> pos_epsilon_sigma;
+          array<double,4> pos_epsilon_sigma;
           coord.x = site.fract.x + n;
           coord.y = site.fract.y + m;
           coord.z = site.fract.z + l;
@@ -148,46 +136,37 @@ int main(int argc, char* argv[]) {
           if (delta_y > large_cutoff) {continue;}
           double delta_z = abs(center_pos.z-pos.z);
           if (delta_z > large_cutoff) {continue;}
-          distance_sq = delta_x*delta_x+delta_y*delta_y+delta_z*delta_z;
+          double distance_sq = delta_x*delta_x+delta_y*delta_y+delta_z*delta_z;
           if (distance_sq > large_cutoff*large_cutoff) {continue;}
           pos_epsilon_sigma[0] = pos.x;
           pos_epsilon_sigma[1] = pos.y;
           pos_epsilon_sigma[2] = pos.z;
-          pos_epsilon_sigma[3] = epsilon;
-          pos_epsilon_sigma[4] = sigma * sigma;
-          pos_epsilon_sigma[5] = pos_epsilon_sigma[4] * pos_epsilon_sigma[4] * pos_epsilon_sigma[4];
+          pos_epsilon_sigma[3] = atomic_number;
           supracell_sites.push_back(pos_epsilon_sigma);
         }
       }
     }  
   }
 
-  if (sym_counts.size() != unique_sites.size()) {throw invalid_argument( "Can't generate symmetry mapping for unique sites, make sure each atoms have a unique label" );}
+  if (sym_counts.size() != unique_sites.size()) {throw std::invalid_argument( "Can't generate symmetry mapping for unique sites, make sure each atoms have a unique label" );}
 
   vector<gemmi::Vec3> sphere_distr_vector = generateSphereSpirals(num_steps);
 
   double boltzmann_energy_lj = 0;
-
-  double sum_exp_energy = 0;
-  double inv_distance_6;
-  double inv_distance_12;
-  double sigma_host;
-  double radius;
-  double energy_lj;
-  vector<array<double,6>> neighbor_sites;
+  double sum_exp_energy = 0;  
   double area_accessible = 0;
 
   for ( gemmi::SmallStructure::Site site: unique_sites ) {
     // Get LJ parameters
-    element_host_str = site.type_symbol;
-    sigma_host = ff_params.get_sigma(element_host_str, false);
-    radius = radius_factor * 0.5 * (sigma_guest+sigma_host);
+    std::string element_host_str = site.type_symbol;
+    double sigma_host = ff_params.get_sigma(element_host_str, false);
+    double radius = radius_factor * 0.5 * (sigma_guest+sigma_host);
     int sym_count = sym_counts[site.label];
     move_rect_box(site.fract,a_x,b_x,c_x,b_y,c_y);
     gemmi::Vec3 Vsite = gemmi::Vec3(structure.cell.orthogonalize(site.fract));
     // Cell list pruning to have only the sites that are within (cutoff + radius) of the unique site
-    neighbor_sites = {};
-    for (array<double,6> pos_epsilon_sigma : supracell_sites) {
+    vector<array<double,4>> neighbor_sites = {};
+    for (array<double,4> pos_epsilon_sigma : supracell_sites) {
       double cutoff_2 = cutoff + radius;
       double delta_x = abs(Vsite.x-pos_epsilon_sigma[0]);
       if (delta_x > cutoff_2) {continue;}
@@ -195,7 +174,7 @@ int main(int argc, char* argv[]) {
       if (delta_y > cutoff_2) {continue;}
       double delta_z = abs(Vsite.z-pos_epsilon_sigma[2]);
       if (delta_z > cutoff_2) {continue;}
-      distance_sq = delta_x*delta_x+delta_y*delta_y+delta_z*delta_z;
+      double distance_sq = delta_x*delta_x+delta_y*delta_y+delta_z*delta_z;
       if (distance_sq > cutoff_2*cutoff_2) {continue;}
       neighbor_sites.push_back(pos_epsilon_sigma);
     }
@@ -204,47 +183,48 @@ int main(int argc, char* argv[]) {
     for (gemmi::Vec3 V: sphere_distr_vector) {
       V *= radius;
       // Lennard Jones interaction energies
-      energy_lj = 0;
+      double energy_lj = 0;
       gemmi::Vec3 pos_neigh;
       bool free = true;
-      for(array<double,6> pos_epsilon_sigma : neighbor_sites) {
+      for(array<double,4> pos_epsilon_sigma : neighbor_sites) {
         double energy_temp = 0;
         pos_neigh = gemmi::Vec3(pos_epsilon_sigma[0], pos_epsilon_sigma[1], pos_epsilon_sigma[2]);
-        distance_sq = (V+Vsite).dist_sq(pos_neigh);
-        sigma_sq = pos_epsilon_sigma[4];
+        double distance_sq = (V+Vsite).dist_sq(pos_neigh);
+        int atomic_number = pos_epsilon_sigma[3];
+        double sigma_sq = FF_parameters[atomic_number][2];
         if (distance_sq <= sigma_sq*access_coeff_sq) {
-          energy_lj = 1e10;
           free = false;
           break;
         }
 	      else if (distance_sq < cutoff_sq) {
-          epsilon = pos_epsilon_sigma[3];
-          sigma_6 = pos_epsilon_sigma[5];
-          inv_distance_6 = 1.0 / ( distance_sq * distance_sq * distance_sq );
-          inv_distance_12 = inv_distance_6 * inv_distance_6;
-          energy_temp = epsilon * sigma_6 * ( sigma_6 * (inv_distance_12 - inv_cutoff_12) - inv_distance_6 + inv_cutoff_6 );
-          energy_lj += energy_temp;
-          if (energy_temp > 0) { free = false; }
+          double epsilon = FF_parameters[atomic_number][0];
+          double sigma_6 = FF_parameters[atomic_number][3];
+          double inv_distance_6 = 1.0 / ( distance_sq * distance_sq * distance_sq );
+          double inv_distance_12 = inv_distance_6 * inv_distance_6;
+          energy_lj += energy_lj_opt(epsilon, sigma_6, inv_distance_6,inv_cutoff_6, inv_distance_12, inv_cutoff_12);
+          if (energy_lj > MAX_ENERGY) { free = false; }
         }
       }
       energy_lj *= 4*R;
-      if ( free ) {count_acc++; }
-      exp_energy = exp(-energy_lj/(R*temperature)); 
-      sum_exp_energy += exp_energy;
-      boltzmann_energy_lj += exp_energy*energy_lj;
+      if ( free ) {
+        count_acc++; 
+        double exp_energy = exp(-energy_lj/(R*temperature)); 
+        sum_exp_energy += exp_energy;
+        boltzmann_energy_lj += exp_energy*energy_lj;
+      }
     }
     area_accessible += radius * radius * sym_count * count_acc;
   }
-  double Framework_density = 1e-3 * mass/(N_A*structure.cell.volume*1e-30); // kg/m3
+  double Framework_density = 1e-3 * molar_mass/(N_A*structure.cell.volume*1e-30); // kg/m3
   double enthalpy_surface = boltzmann_energy_lj/sum_exp_energy - R*temperature;  // kJ/mol
   double henry_surface = 1e-3*sum_exp_energy/(R*temperature)/(unique_sites.size()*num_steps)/Framework_density;    // mol/kg/Pa
   area_accessible *= 1e4 * M_PI / (2 * structure.cell.volume * num_steps); // m2/cm3 // Divided by 8 because of sigma and rmin diff
-  string structure_name(structure_file);
+  std::string structure_name(structure_file);
   structure_name = structure_name.substr(structure_name.find_last_of("/\\") + 1);
-  string::size_type const p(structure_name.find_last_of('.'));
+  std::string::size_type const p(structure_name.find_last_of('.'));
   structure_name = structure_name.substr(0, p);
-  chrono::high_resolution_clock::time_point t_end = chrono::high_resolution_clock::now();
-  double elapsed_time_ms = chrono::duration<double, milli>(t_end-t_start).count();
+  std::chrono::high_resolution_clock::time_point t_end = std::chrono::high_resolution_clock::now();
+  double elapsed_time_ms = std::chrono::duration<double, std::milli>(t_end-t_start).count();
   // Structure name, Enthalpy (kJ/mol), Henry coeff (mol/kg/Pa), Accessible Surface Area (m2/cm3), Time (s)
-  cout << structure_name << "," << enthalpy_surface << "," << henry_surface << "," << area_accessible << "," << elapsed_time_ms*0.001 << endl;
+  std::cout << structure_name << "," << enthalpy_surface << "," << henry_surface << "," << area_accessible << "," << elapsed_time_ms*0.001 << std::endl;
 }
