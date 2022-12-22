@@ -4,3 +4,4 @@ raess
 .vscode/
 include/optionparser.h
 structure/*
+.*
