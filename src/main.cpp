@@ -90,10 +90,9 @@ int main(int argc, char* argv[]) {
   double b_y = structure.cell.orth.mat[1][1]; double c_y = structure.cell.orth.mat[1][2];
   double c_z = structure.cell.orth.mat[2][2];
   // Minimal rectangular box that could interact with atoms within the smaller equivalent rectangluar box
-  int l_max = int(abs((cutoff + sigma_guest) / c_z)) + 1;
-  int m_max = int(abs((cutoff + sigma_guest) / b_y)) + 1; 
-  int n_max = int(abs((cutoff + sigma_guest) / a_x)) + 1; 
-
+  int l_max = floor( std::abs( (cutoff + sigma_guest) / c_z ) ) + 1;
+  int m_max = floor( std::abs( (cutoff + sigma_guest + std::abs(l_max*c_y)) / b_y ) ) + 1;
+  int n_max = floor( std::abs( (cutoff + sigma_guest + std::abs(m_max*b_x) + std::abs(l_max*c_x)) / a_x ) ) + 1;
   // center position used to reduce the neighbor list
   gemmi::Position center_pos = gemmi::Position(a_x/2,b_y/2,c_z/2);
   double large_cutoff = cutoff + center_pos.length() + sigma_guest;
@@ -113,36 +112,22 @@ int main(int argc, char* argv[]) {
     ++sym_counts[site.label];
     // neighbor list within rectangular box
     move_rect_box(site.fract,a_x,b_x,c_x,b_y,c_y);
-    for (int l = -l_max; (l<l_max+1); ++l){
-      int y_shift_lo=0; int y_shift_hi=0; // shift in y implied by the movement in c axis
-      double y_shift = (l*c_y/b_y);
-      if (y_shift>0){y_shift_lo = (int) (y_shift)+1; y_shift_hi = (int) (y_shift);} 
-      else if (y_shift<0){y_shift_lo = (int) (y_shift);y_shift_hi = (int) (y_shift)-1;}
-      for (int m = -m_max-y_shift_lo; (m<m_max-y_shift_hi+1); ++m){ // y contained between -12A and +12A shift correction
-        int x_shift_lo=0; int x_shift_hi=0; // shift in x implied by the movement in b and c axis
-        double x_shift = ((m*b_x + l*c_x)/a_x);
-        if (x_shift>0){x_shift_lo = (int) (x_shift)+1; x_shift_hi = (int) (x_shift);} 
-        else if (x_shift<0){x_shift_lo = (int) (x_shift);x_shift_hi = (int) (x_shift)-1;}
-        for (int n = -n_max-x_shift_lo; (n<n_max-x_shift_hi+1); ++n) {
-          // calculate a distance from centre box
+    for (int n = -n_max; (n<n_max+1); ++n) {
+      for (int m = -m_max; (m<m_max+1); ++m) {
+        for (int l = -l_max; (l<l_max+1); ++l) {
           array<double,4> pos_epsilon_sigma;
           coord.x = site.fract.x + n;
           coord.y = site.fract.y + m;
           coord.z = site.fract.z + l;
           gemmi::Position pos = gemmi::Position(structure.cell.orthogonalize(coord));
-          double delta_x = abs(center_pos.x-pos.x);
-          if (delta_x > large_cutoff) {continue;}
-          double delta_y = abs(center_pos.y-pos.y);
-          if (delta_y > large_cutoff) {continue;}
-          double delta_z = abs(center_pos.z-pos.z);
-          if (delta_z > large_cutoff) {continue;}
-          double distance_sq = delta_x*delta_x+delta_y*delta_y+delta_z*delta_z;
-          if (distance_sq > large_cutoff*large_cutoff) {continue;}
-          pos_epsilon_sigma[0] = pos.x;
-          pos_epsilon_sigma[1] = pos.y;
-          pos_epsilon_sigma[2] = pos.z;
-          pos_epsilon_sigma[3] = atomic_number;
-          supracell_sites.push_back(pos_epsilon_sigma);
+          double distance_sq = pos.dist_sq(center_pos); 
+          if (distance_sq <= large_cutoff*large_cutoff) {
+            pos_epsilon_sigma[0] = pos.x;
+            pos_epsilon_sigma[1] = pos.y;
+            pos_epsilon_sigma[2] = pos.z;
+            pos_epsilon_sigma[3] = atomic_number;
+            supracell_sites.push_back(pos_epsilon_sigma);
+          }
         }
       }
     }  
@@ -166,8 +151,8 @@ int main(int argc, char* argv[]) {
     gemmi::Vec3 Vsite = gemmi::Vec3(structure.cell.orthogonalize(site.fract));
     // Cell list pruning to have only the sites that are within (cutoff + radius) of the unique site
     vector<array<double,4>> neighbor_sites = {};
+    double cutoff_2 = cutoff + radius;
     for (array<double,4> pos_epsilon_sigma : supracell_sites) {
-      double cutoff_2 = cutoff + radius;
       double delta_x = abs(Vsite.x-pos_epsilon_sigma[0]);
       if (delta_x > cutoff_2) {continue;}
       double delta_y = abs(Vsite.y-pos_epsilon_sigma[1]);
@@ -196,7 +181,7 @@ int main(int argc, char* argv[]) {
           free = false;
           break;
         }
-	      else if (distance_sq < cutoff_sq) {
+	      else if (distance_sq <= cutoff_sq) {
           double epsilon = FF_parameters[atomic_number][0];
           double sigma_6 = FF_parameters[atomic_number][3];
           double inv_distance_6 = 1.0 / ( distance_sq * distance_sq * distance_sq );
