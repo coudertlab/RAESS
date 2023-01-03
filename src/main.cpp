@@ -33,7 +33,8 @@ int main(int argc, char* argv[]) {
     printf("    REJECT = Rejection condition: relative diameter of the rejection threshold distance (e.g. 0.85)\n");
     printf("    SSSIZE = Sampling Sphere Size parameter is the relative distance\n"
            "             compared to sigma as an atomic radius (e.g. 1.6)\n");
-    printf("[TEST] %s structure/KAXQIL_clean.cif forcefield/Dreiding_uff.def 298 16 2000 Xe 0.85 1.6  \n", argv[0]);
+    printf("[TEST] %s structure/KAXQIL_clean_14.cif forcefield/UFF.def 298 12 2000 Xe 0.85 1.6  \n", argv[0]);
+    printf("[RESULT] KAXQIL_clean_14,-44.6853,0.0262976,510.872,0.0826761\n");
     exit(0);
   }
 
@@ -54,6 +55,7 @@ int main(int argc, char* argv[]) {
   double surface_limitation = 1.5;
   if (argv[9]) {surface_limitation = stod(argv[9]);}
   double MAX_ENERGY = surface_limitation*R*temperature;
+  double beta = 1/(R*temperature);
 
   // Error catch
   if ( num_steps < 0 || temperature < 0 ) {throw invalid_argument( "Received negative value for the Number of Steps or the Temperature or the Accessibility Coefficient" );}
@@ -193,7 +195,7 @@ int main(int argc, char* argv[]) {
       energy_lj *= 4*R;
       if ( free ) {
         count_acc++; 
-        double exp_energy = exp(-energy_lj/(R*temperature)); 
+        double exp_energy = exp(-beta*energy_lj); 
         sum_exp_energy += exp_energy;
         boltzmann_energy_lj += exp_energy*energy_lj;
       }
@@ -202,7 +204,7 @@ int main(int argc, char* argv[]) {
   }
   double Framework_density = 1e-3 * molar_mass/(N_A*structure.cell.volume*1e-30); // kg/m3
   double enthalpy_surface = boltzmann_energy_lj/sum_exp_energy - R*temperature;  // kJ/mol
-  double henry_surface = 1e-3*sum_exp_energy/(R*temperature)/(unique_sites.size()*num_steps)/Framework_density;    // mol/kg/Pa
+  double henry_surface = 1e-3*sum_exp_energy*beta/(unique_sites.size()*num_steps)/Framework_density;    // mol/kg/Pa
   area_accessible *= 1e4 * M_PI / (2 * structure.cell.volume * num_steps); // m2/cm3 // Divided by 8 because of sigma and rmin diff
   std::string structure_name(structure_file);
   structure_name = structure_name.substr(structure_name.find_last_of("/\\") + 1);
