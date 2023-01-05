@@ -53,8 +53,6 @@ int main(int argc, char* argv[]) {
   double radius_factor = min_factor;
   if (argv[8]) {radius_factor = stod(argv[8]);}
   double surface_limitation = 1.5;
-  if (argv[9]) {surface_limitation = stod(argv[9]);}
-  double MAX_ENERGY = surface_limitation*R*temperature;
   double beta = 1/(R*temperature);
 
   // Error catch
@@ -189,7 +187,7 @@ int main(int argc, char* argv[]) {
           double inv_distance_6 = 1.0 / ( distance_sq * distance_sq * distance_sq );
           double inv_distance_12 = inv_distance_6 * inv_distance_6;
           energy_lj += energy_lj_opt(epsilon, sigma_6, inv_distance_6,inv_cutoff_6, inv_distance_12, inv_cutoff_12);
-          if (energy_lj > MAX_ENERGY) { free = false; }
+          if (energy_lj > 0) { free = false; }
         }
       }
       energy_lj *= 4*R;
