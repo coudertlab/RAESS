@@ -193,19 +193,17 @@ int main(int argc, char* argv[]) {
         }
       }
       energy_lj *= 4*R;
-      if ( free ) {
-        count_acc++; 
-        double exp_energy = exp(-beta*energy_lj); 
-        sum_exp_energy += exp_energy;
-        boltzmann_energy_lj += exp_energy*energy_lj;
-      }
+      if ( free ) { count_acc++; }
+      double exp_energy = exp(-beta*energy_lj);
+      sum_exp_energy += exp_energy;
+      boltzmann_energy_lj += exp_energy*energy_lj;
     }
     area_accessible += radius * radius * sym_count * count_acc;
   }
   double Framework_density = 1e-3 * molar_mass/(N_A*structure.cell.volume*1e-30); // kg/m3
   double enthalpy_surface = boltzmann_energy_lj/sum_exp_energy - R*temperature;  // kJ/mol
   double henry_surface = 1e-3*sum_exp_energy*beta/(unique_sites.size()*num_steps)/Framework_density;    // mol/kg/Pa
-  area_accessible *= 1e4 * M_PI / (2 * structure.cell.volume * num_steps); // m2/cm3 // Divided by 8 because of sigma and rmin diff
+  area_accessible *= 0.5 * 1e4 * M_PI / ( structure.cell.volume * num_steps); // m2/cm3 // Divided by 8 because of sigma and rmin diff
   std::string structure_name(structure_file);
   structure_name = structure_name.substr(structure_name.find_last_of("/\\") + 1);
   std::string::size_type const p(structure_name.find_last_of('.'));
