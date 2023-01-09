@@ -12,7 +12,7 @@
 #define sqrt_2 1.414213562373095
 #define min_factor 1.122462048309373  // 2^(1/6)
 #define N_A 6.02214076e23    // part/mol
-#define MAX_EXP 1e3 // exp(-1000) = 1.34*10^434, for argument above we skip calculation
+#define MAX_ENERGY 1e10 // default value for overlapping adsorbate molecules (generates nan)
 
 double energy_lj_opt(double &epsilon, double sigma_6, double &inv_distance_6, double &inv_cutoff_6, double &inv_distance_12, double &inv_cutoff_12) {
   return epsilon*sigma_6*( sigma_6 * (inv_distance_12 - inv_cutoff_12) - inv_distance_6 + inv_cutoff_6 );
@@ -172,12 +172,12 @@ int main(int argc, char* argv[]) {
       gemmi::Vec3 pos_neigh;
       bool free = true;
       for(array<double,4> pos_epsilon_sigma : neighbor_sites) {
-        double energy_temp = 0;
         pos_neigh = gemmi::Vec3(pos_epsilon_sigma[0], pos_epsilon_sigma[1], pos_epsilon_sigma[2]);
         double distance_sq = (V+Vsite).dist_sq(pos_neigh);
         int atomic_number = pos_epsilon_sigma[3];
         double sigma_sq = FF_parameters[atomic_number][2];
         if (distance_sq <= sigma_sq*access_coeff_sq) {
+          energy_lj = MAX_ENERGY;
           free = false;
           break;
         }
@@ -186,8 +186,9 @@ int main(int argc, char* argv[]) {
           double sigma_6 = FF_parameters[atomic_number][3];
           double inv_distance_6 = 1.0 / ( distance_sq * distance_sq * distance_sq );
           double inv_distance_12 = inv_distance_6 * inv_distance_6;
-          energy_lj += energy_lj_opt(epsilon, sigma_6, inv_distance_6,inv_cutoff_6, inv_distance_12, inv_cutoff_12);
-          if (energy_lj > 0) { free = false; }
+          double energy_temp = energy_lj_opt(epsilon, sigma_6, inv_distance_6,inv_cutoff_6, inv_distance_12, inv_cutoff_12);
+          if (energy_temp > 0) { free = false; }
+          energy_lj += energy_temp;
         }
       }
       energy_lj *= 4*R;
