@@ -28,7 +28,9 @@ This binary is supposed to be used in a high-throughput manner to add rows to a 
 ## Paper
 
 This work is presented in the foloowing article:
-(on going work)
+<https://doi.org/10.26434/chemrxiv-2022-mczh4-v2>
+
+The current implementation is a bit faster than the one presented in the paper while remaining as accurate. (0.314 seconds computation time in average on the CoREMOF 2019 dataset with a LCD higher than 3.7 angstrom instead of 0.34 seconds in the paper).
 
 ## Acknowledgement
 
