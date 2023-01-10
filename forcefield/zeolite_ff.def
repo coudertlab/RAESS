@@ -1,0 +1,24 @@
+# general rule for shifted vs truncated
+shifted
+# general rule tailcorrections
+no
+# number of defined interactions
+15
+# atom type, interaction form, epsilon, sigma
+Si_		 lennard-jones 		31.98	 2.970   #Vujic et al
+Al_		 lennard-jones 		24	     3.140
+O_		 lennard-jones 		52   	 3.011
+Na_		 lennard-jones 		234.13	 3.230
+O_o2             lennard-jones   	50.7273    		 3.05
+O_co2            lennard-jones   	80.507           3.033
+C_co2            lennard-jones   	28.129      	 2.757
+N_n2             lennard-jones   	36.4      		 3.32
+Hw               lennard-jones      0                0
+Ow               lennard-jones      81.8994972       3.16435
+Mw               lennard_jones      0                0
+He               lennard-jones   	10.9      		 2.64
+Ar               lennard-jones   	119.8     		 3.405
+Kr               lennard-jones   	166.4     		 3.636
+Xe               lennard-jones   	221.0     		 4.1
+# general mixing rule for Lennard-Jones
+Lorentz-Berthelot
