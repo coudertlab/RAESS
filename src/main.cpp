@@ -52,7 +52,6 @@ int main(int argc, char* argv[]) {
   if (argv[7]) {access_coeff_sq = stod(argv[7])*stod(argv[7]);}
   double radius_factor = min_factor;
   if (argv[8]) {radius_factor = stod(argv[8]);}
-  double surface_limitation = 1.5;
   double beta = 1/(R*temperature);
 
   // Error catch
