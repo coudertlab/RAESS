@@ -1,9 +1,11 @@
 # RAESS
-RAESS (Rapid Adsorption Enthalpy Surface Sampling) is a sampling tool for rapid 
+RAESS (Rapid Adsorption Enthalpy Surface Sampling) is a sampling tool for rapid adsorption enthalpy and Henry constant calculations in nanoporous materials 
 
 ## Installation
 
 Check if you have `c++11` compiler installed (may work with other compiler but has been tested and mainly used with this compiler).
+
+Tested for c++ (Ubuntu 9.4.0-1ubuntu1~20.04.1) 9.4.0
 
 Compilation that follows the rules set in the `Makefile`:
 ```
@@ -12,7 +14,7 @@ make all
 
 ## Example Usage
 
-If you want to run a surface sampling simulation on the structure KAXQIL (CSD code) from CoRE MOF 2019 all-solvent removed with the Dreiding+uff forcefield at 298K with a 12A cutoff for the xenon. 
+If you want to run a surface sampling simulation on the structure KAXQIL (CSD code) from CoRE MOF 2019 all-solvent removed with the uff forcefield at 298K with a 12A cutoff for the xenon. 
 ```
 ./raess structure/KAXQIL_clean_14.cif forcefield/UFF.def 298 12 2000 Xe 0.85 1.6
 ```
