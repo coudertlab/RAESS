@@ -36,9 +36,9 @@ The current implementation is a bit faster than the one presented in the paper w
 
 ## Acknowledgement
 
-This code has been developped during a PhD thesis co-financed by the CEA and Orano under the supervision of François-Xavier Coudert: https://github.com/fxcoudert
+This code has been developed during a PhD thesis co-financed by the CEA and Orano under the supervision of François-Xavier Coudert: https://github.com/fxcoudert
 
-This code includes the library developped in Gemmi: 
+This code includes the library developed in Gemmi: 
 https://github.com/project-gemmi/gemmi.git
 
 ## License
